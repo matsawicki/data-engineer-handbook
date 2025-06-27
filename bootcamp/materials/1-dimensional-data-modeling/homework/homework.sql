@@ -19,15 +19,18 @@ create type quality_class as enum ('star',
 drop table if exists actors;
 
 create table actors (
-	actorid text primary key,
+	actorid text,
 	actor text,
 	current_year int4,
 	films films,
 	quality_class quality_class,
-	is_active bool
+	is_active bool,
+	primary key (actorid,
+current_year)
 
 );
 
+insert into public.actors 
 with previous_year as (
 select
 	*
@@ -39,37 +42,39 @@ where
 
 current_year as (
 select
-	*
+	actorid,
+	actor,
+	"year",
+	array_agg(row(filmid, film, votes, rating)::films) as films, 
+	avg(rating) as average_rating
 from
 	public.actor_films
 where
 	"year" = 1970
+group by
+	actorid,
+	actor,
+	"year"
 )
 
 
 select
 	coalesce(ct.actorid, py.actorid) as actorid,
 	coalesce(ct.actor, py.actor) as actor,
-	coalesce(ct.year, py.current_year) -- ogarnac dobrze logike dla roku
+	coalesce(ct.year, py.current_year + 1) as current_year, 
 	case
 		when py.films is null then 
-			array[
-				row(
-					ct.filmid,
-					ct.film,
-					ct.votes,
-					ct.rating
-					)::films
-				  ]
-		else py.films || array[
-							row(
-								ct.filmid,
-								ct.film,
-								ct.votes,
-								ct.rating
-								)::films
-							  ]
-	end as films
+			ct.films
+		else py.films || ct.films
+	end as films,
+	case
+		when ct.average_rating <= 6 then 'bad'
+		when ct.average_rating <= 7 then 'average'
+		when ct.average_rating <= 8 then 'good'
+		else 'star'
+	end as quality_class,
+	1 as is_active
+	-- todo
 from
 		current_year as ct
 full join previous_year as py
