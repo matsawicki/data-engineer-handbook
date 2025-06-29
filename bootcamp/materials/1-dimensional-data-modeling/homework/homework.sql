@@ -193,6 +193,95 @@ select
 	end_date,
 	2021 as current_year
 from
-	scd
-	
+	scd;
 -- 5 Incremental query for actors_history_scd
+	
+	
+with last_season_scd as (
+select
+	*
+from
+	actors_history_scd
+where
+	current_year = 2021
+	and end_date = 2021
+
+),
+
+historical_scd as (
+select
+	*
+from
+	actors_history_scd
+where
+	current_year = 2021
+	and end_date < 2021
+
+),
+
+new_data as (
+select
+	*
+from
+	actors
+where
+	current_year = 2021
+),
+
+unchanged_data as (
+select 
+		ls.actorid,
+		ls.actor,
+		ls.is_active,
+		ls.quality_class,
+		ls.start_date,
+		nd.current_year as end_date,
+		nd.current_year
+from
+	new_data as nd
+inner join last_season_scd as ls
+	on
+	nd.actorid = ls.actorid
+where
+	nd.is_active = ls.is_active
+	and nd.quality_class = ls.quality_class
+	
+),
+
+changed_and_new_data as (
+select 
+		nd.actorid,
+		nd.actor,
+		nd.is_active,
+		nd.quality_class,
+		nd.current_year as start_date,
+		nd.current_year as end_date,
+		nd.current_year
+from
+	new_data as nd
+inner join last_season_scd as ls
+	on
+	nd.actorid <> ls.actorid
+where
+	(nd.is_active <> ls.is_active
+		or nd.quality_class = ls.quality_class)
+	or ls.actorid is null
+
+)
+
+select
+	*
+from
+	historical_scd
+union all
+
+select
+	*
+from
+	unchanged_data
+union all
+
+select
+	*
+from
+	changed_and_new_data
