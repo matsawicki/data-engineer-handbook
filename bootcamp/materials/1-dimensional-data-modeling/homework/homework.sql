@@ -31,6 +31,9 @@ current_year)
 
 );
 
+
+-- 2 Cumulative table generation query
+
 select
 	min("year") as first_year,
 	max("year") as last_year
@@ -42,11 +45,9 @@ declare
 var_current_year integer := 1969;
 
 begin
-while var_current_year <= 2021 loop
+while var_current_year < 2021 loop
 raise notice 'processing year  %',
 var_current_year;
-
-var_current_year := var_current_year + 1;
 
 insert
 	into
@@ -111,6 +112,12 @@ from
 full join previous_year as py
 	on
 		ct.actorid = py.actorid;
+
+
+var_current_year := var_current_year + 1;
+
 end loop;
 
 end$$;
+
+-- 3 DDL for actors_history_scd table 
