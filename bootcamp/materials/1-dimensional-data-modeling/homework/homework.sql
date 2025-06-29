@@ -30,8 +30,6 @@ create table actors (
 current_year)
 
 );
-
-
 -- 2 Cumulative table generation query
 
 select
@@ -113,11 +111,88 @@ full join previous_year as py
 	on
 		ct.actorid = py.actorid;
 
-
 var_current_year := var_current_year + 1;
-
 end loop;
 
 end$$;
+-- 3 and 4 DDL for actors_history_scd table 
 
--- 3 DDL for actors_history_scd table 
+
+create table actors_history_scd (
+	actorid text,
+	actor text,
+	is_active bool,
+	quality_class quality_class,
+	start_date integer,
+	end_date integer,
+	current_year integer,
+	primary key (actorid,
+start_date,
+end_date)
+
+);
+
+insert
+	into
+	actors_history_scd
+with with_previous_value as (
+	select
+		actorid,
+		actor,
+		is_active,
+		current_year,
+		quality_class,
+		lag(is_active) over(partition by actorid order by current_year) as previous_is_active,
+		lag(quality_class) over(partition by actorid order by current_year) as previous_quality_class
+	from
+		actors 
+),
+	with_change_indicator as (
+	select
+		*,
+		case
+			when is_active <> previous_is_active then 1
+			when quality_class <> previous_quality_class then 1
+			else 0
+		end as change_indicator
+	from
+		with_previous_value
+),
+	with_streaks as (
+	select
+		* ,
+		sum(change_indicator) over(partition by actorid order by current_year) as streak_indentifier
+	from
+		with_change_indicator
+),
+	scd as (
+	select
+		actorid,
+		actor,
+		streak_indentifier,
+		is_active,
+		"quality_class",
+		min(current_year) as start_date,
+		max(current_year) as end_date
+	from
+		with_streaks
+	group by
+		actorid,
+		actor,
+		streak_indentifier,
+		is_active,
+		"quality_class" 
+)
+
+select  
+	actorid,
+	actor,
+	is_active,
+	quality_class,
+	start_date,
+	end_date,
+	2021 as current_year
+from
+	scd
+	
+-- 5 Incremental query for actors_history_scd
