@@ -31,6 +31,23 @@ current_year)
 
 );
 
+select
+	min("year") as first_year,
+	max("year") as last_year
+from
+	actor_films 
+
+do $$
+declare
+var_current_year integer := 1969;
+
+begin
+while var_current_year <= 2021 loop
+raise notice 'processing year  %',
+var_current_year;
+
+var_current_year := var_current_year + 1;
+
 insert
 	into
 	public.actors 
@@ -40,7 +57,7 @@ with previous_year as (
 	from
 		public.actors
 	where
-		current_year = 1971
+		current_year = var_current_year
 ),
 
 
@@ -54,7 +71,7 @@ with previous_year as (
 	from
 		public.actor_films
 	where
-		"year" = 1972
+		"year" = var_current_year + 1
 	group by
 		actorid,
 		actor,
@@ -94,3 +111,6 @@ from
 full join previous_year as py
 	on
 		ct.actorid = py.actorid;
+end loop;
+
+end$$;
