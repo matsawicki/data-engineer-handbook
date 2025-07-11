@@ -1,3 +1,14 @@
+create type browser_date_list as (
+	browser_type text,
+	date_list date[]
+);
+
+
+create table user_devices_cumulated (
+	user_id numeric primary key,
+	browser_date_list browser_date_list
+);
+
 with base_data as (
 select
 	events.user_id,
@@ -29,8 +40,22 @@ on
 	true
 
 
+),
+
+yesterday as (
+	select * from base_data 
+	where "date" = '2022-12-31'
+),
+
+today as (
+	select * from user_devices_cumulated
 )
-select
-	*
-from
-	date_ranges
+
+
+select  
+	coalesce(yesterday.user_id, today.user_id) as user_id
+
+from today as today
+full join yesterday as yesterday
+	on yesterday.user_id = today.user_id
+	and yesterday.browser_type = today.browser_date_list.browser_type
