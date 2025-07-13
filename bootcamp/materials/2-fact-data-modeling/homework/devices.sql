@@ -1,4 +1,3 @@
-
 /*
 create type browser_date_list as (
 	browser_type text,
@@ -12,6 +11,10 @@ create table user_devices_cumulated (
 	primary key (user_id, datestamp)
 );
 */
+
+
+drop table if exsits public.events_stg;
+
 with base_data as (
 select
 	events.user_id,
@@ -32,19 +35,24 @@ where
 
 base_data_deduplicated as (
 select
-	*
+	user_id,
+	browser_type,
+	"date"
 from
 	base_data
 where
 	rn = 1
 
-),
-min_max_date as (
+)
+
+select * into public.events_stg from base_data_deduplicated;
+
+with min_max_date as (
 select
 	min("date") as min_date,
 	max("date") as max_date
 from
-	base_data
+	public.events_stg
 
 ),
 date_ranges as (
@@ -59,14 +67,6 @@ on
 
 ),
 
-yesterday as (
-select
-	*
-from
-	public.user_devices_cumulated
-where datestamp = '2022-12-31'
-),
-
 today as (
 select 
 		user_id,
@@ -77,15 +77,23 @@ select
 		]		
 		)::browser_date_list as browser_date_list
 from
-	base_data_deduplicated
+	public.events_stg
 where
 	"date" = '2023-01-01'
 		
+),
+
+yesterday as (
+select
+	*
+from
+	public.user_devices_cumulated
+where
+	datestamp = '2022-12-31'
 )
 
 select  
 	coalesce(yesterday.user_id, today.user_id) as user_id
-	
 from
 	yesterday as yesterday
 full join today as today
